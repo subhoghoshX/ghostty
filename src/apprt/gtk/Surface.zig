@@ -1856,6 +1856,16 @@ pub fn keyEvent(
         if (entry.native == keycode) break :keycode entry.key;
     } else .unidentified;
 
+    // When not composing, we prefer the logical key (from keyval) to respect
+    // OS-level key remapping (e.g., caps:swapescape). This allows users to
+    // swap keys at the OS level and have Ghostty recognize the remapped keys.
+    const key = if (!self.im_composing) key: {
+        if (gtk_key.keyFromKeyval(keyval)) |key| {
+            break :key key;
+        }
+        break :key physical_key;
+    } else .unidentified;
+
     // Get our modifier for the event
     const mods: input.Mods = gtk_key.eventMods(
         event,
@@ -1904,7 +1914,7 @@ pub fn keyEvent(
     // Invoke the core Ghostty logic to handle this input.
     const effect = self.core_surface.keyCallback(.{
         .action = action,
-        .key = physical_key,
+        .key = key,
         .mods = mods,
         .consumed_mods = consumed_mods,
         .composing = self.im_composing,
